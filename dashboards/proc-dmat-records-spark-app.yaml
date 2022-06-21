@@ -1,0 +1,246 @@
+{{- if .Values.sparkJob3.run }}
+apiVersion: "sparkoperator.k8s.io/v1beta2"
+kind: SparkApplication
+metadata:
+  name: {{ template "dmat-oneparser.fullname" . }}-spark-proc-dmat-records
+  namespace: {{ .Values.namespace | quote }}
+  labels:
+    app: {{ template "dmat-oneparser.name" . }}-spark-proc-dmat-records
+    chart: {{ template "dmat-oneparser.chart" . }}
+    release: {{ .Release.Name }}
+spec:
+  type: Scala
+  mode: cluster
+  image: {{ .Values.sparkImage | quote }}
+  imagePullPolicy: IfNotPresent
+  nodeSelector:
+    sparkApp: {{ .Values.nodeSelector.sparkApp | quote }}
+  mainClass: {{ .Values.sparkJob3.mainClass }}
+  mainApplicationFile: {{ .Values.sparkJarUri }}
+  deps:
+    jars:
+    {{- range .Values.sparkJob3.depJars }}
+      - {{ . }}
+    {{- end }}
+  sparkVersion:  {{ .Values.sparkVersion | quote }}
+  restartPolicy:
+    type: Always
+  hadoopConfigMap: {{ template "dmat-oneparser.fullname" . }}-hadoop-config
+{{- if .Values.dynamicAllocation.enabled }}
+  dynamicAllocation:
+    enabled: true
+    initialExecutors: 2
+    minExecutors: 2
+    maxExecutors: {{ .Values.sparkJob3.executor.instances }}
+{{- end }}
+  sparkConf:
+    "spark.CURRENT_ENVIRONMENT": {{ .Values.processingServer }}
+    "spark.POSTGRES_CONN_URL": "jdbc:postgresql://{{ template "dmat-oneparser.dbHost" . }}:{{ .Values.dataBase.port }}/
+    {{- .Values.dataBase.name }}?currentSchema={{ .Values.dataBase.schema }}&user={{ .Values.dataBase.user }}&password={{ .Values.dataBase.password }}"
+    "spark.POSTGRES_CONN_SDE_URL": "jdbc:postgresql://{{ template "dmat-oneparser.dbHost" . }}:{{ .Values.dataBase.port }}/
+    {{- .Values.dataBase.name }}?currentSchema=sde&user={{ .Values.dataBase.user }}&password={{ .Values.dataBase.password }}&socketTimeout=5"
+    "spark.POSTGRES_DRIVER": "org.postgresql.Driver"
+    "spark.POSTGRES_DB_URL": "jdbc:postgresql://{{ template "dmat-oneparser.dbHost" . }}:{{ .Values.dataBase.port }}/{{ .Values.dataBase.name }}?currentSchema={{ .Values.dataBase.schema }}"
+    "spark.POSTGRES_DB_USER": {{ .Values.dataBase.user | quote }}
+    "spark.POSTGRES_DB_PWD": {{ .Values.dataBase.password | quote }}
+    "spark.HIVE_HDFS_PATH": "hdfs://{{ template "dmat-oneparser.hdfsURI" . }}{{ .Values.hive.warehouseDir }}/{{ .Values.hive.dbName }}.db/"
+    "spark.HDFS_FILE_DIR_PATH": "hdfs://{{ template "dmat-oneparser.hdfsURI" . }}{{ .Values.hdfs.fileDir }}"
+    "spark.HDFS_URI": "hdfs://{{ template "dmat-oneparser.hdfsURI" . }}"
+    "spark.WRITE_HDFS_URI": {{ .Values.writeHdfsUri | quote }}
+    "spark.DM_USER_DUMMY": "10088"
+    "spark.HIVE_DB": "{{ .Values.hive.dbName }}."
+    "spark.FINAL_HIVE_TBL_NAME": {{ .Values.hive.finalTableName | quote }}
+    "spark.HIVE_MIN_PARTITION": {{ .Values.sparkJob3.hiveMinPartition | quote }}
+    "spark.LOG_GENERAL_EXCEPTION": "FALSE"
+    "spark.LOG_LEVEL": {{ .Values.sparkJob3.logLevel | quote }}
+    #"spark.executorEnv.HADOOP_USER_NAME": "hdfs"
+    "spark.ZOOKEEPER_HOSTS": {{ .Values.kafka.zookeeperHosts | quote }}
+    "spark.BOOTSTRAP_SERVERS": {{ .Values.kafka.bootstrapServers | quote }}
+    "spark.MAX_OFFSETS_PER_TRIGGER": {{ .Values.sparkJob3.maxOffsetPerTrigger | quote }}
+    "spark.STARTING_OFFSETS": {{ .Values.sparkJob3.startingOffsets | quote }}
+    "spark.KAFKA_GROUP_ID": DMATgroupId-{{ .Values.processingServer }}
+    "spark.NOTIFICATION_KAFKA_TOPIC": nservice-{{ .Values.processingServer }}
+    "spark.PROCESS_PARAM_VALUES_KAFKA_TOPIC": processparamvalues-{{ .Values.processingServer }}
+    "spark.HIVE_KAFKA_TOPIC": hiveprocessor-{{ .Values.processingServer }}
+    "spark.ES_KAFKA_TOPIC": elastic-{{ .Values.processingServer }}
+    "spark.SCHEMA_REGISTRY_URL": {{ .Values.kafka.schemaRegistry  | quote }}
+    "spark.PARAM_VALUE_SCHEMA_REGISTRY_ID": "latest"
+    "spark.CHECKPOINT_LOCATION": {{ .Values.sparkCheckpointsLocation | quote }}
+    "spark.WRITE_SEQ_TO_HDFS_CHECKPOINT_SEGMENT": "write_seq_to_hdfs"
+    "spark.READ_SEQ_TO_HIVE_CHECKPOINT_SEGMENT": "read_seq_to_hive"
+    "spark.PROCESS_DMAT_RECORDS_CHECKPOINT_SEGMENT": "process_dmat_records"
+    "spark.ES_HOST_PATH": {{ .Values.elasticSearch.host | quote }}
+    "spark.ES_PORT_NUM": {{ .Values.elasticSearch.restPort | quote }}
+    "spark.ES_USER": {{ .Values.elasticSearch.esUser | quote }}
+    "spark.ES_PWD": {{ .Values.elasticSearch.esPwd | quote }}
+    "spark.TBL_QCOMM_NAME": "LogRecord_QComm_Ext_D_05052020"
+    "spark.TBL_QCOMM2_NAME": "LogRecord_QComm2_Ext_D_05052020"
+    "spark.TBL_B192_NAME": "LogRecord_B192_Ext_D_05052020"
+    "spark.TBL_B193_NAME": "LogRecord_B193_Ext_D_05052020"
+    "spark.TBL_ASN_NAME": "LogRecord_ASN_Ext_D_05052020"
+    "spark.TBL_NAS_NAME": "LogRecord_NAS_Ext_D_05052020"
+    "spark.TBL_IP_NAME": "LogRecord_IP_Ext_D_05052020"
+    "spark.TBL_QCOMM5G_NAME": "LogRecord_QComm_5G_Ext_D_05052020"
+    "spark.SEQ_FILE_DEL": "FALSE"
+    "spark.DETAILED_HIVE_JOB_ANALYSIS": "FALSE"
+    "spark.REPORTS_HIVE_TBL_NAME": "_D_05052020"
+    "spark.PROCESSING_SERVER": {{ .Values.processingServer }}
+    "spark.PROCESS_RM_ONLY": "FALSE"
+    "spark.ONP_GNBID_URL": {{ .Values.sparkJob3.onpGnbidUrl | quote }}
+    "spark.ONP_PCIDISTANCE_URL": {{ .Values.sparkJob3.onpPcidistanceUrl | quote }}
+    "spark.es_cluster_name": {{ .Values.elasticSearch.clusterName | quote }}
+    "spark.es_node_id": {{ .Values.elasticSearch.host | quote }}
+    "spark.es_port_id": {{ .Values.elasticSearch.transportPort | quote }}
+    #"spark.es_port_id": {{ .Values.elasticSearch.restPort | quote }}
+    "spark.ES_INDEX_PREFIX": {{ .Values.elasticSearch.indexPrefix | quote }}
+    "spark.es_cellsite_index": "cellsite"
+    "spark.cellsite_weekly_index_date": "2018-07-01"
+    "spark.PROCESS_FILE_TYPE": "ALL"
+    "hive.metastore.client.connect.retry.delay": "5"
+    "hive.metastore.client.socket.timeout": "1800"
+    "spark.hadoop.hive.metastore.uris": {{ .Values.hive.metastoreUri | quote }}
+    "hive.server2.enable.doAs": "false"
+    "hive.server2.thrift.port": "10016"
+    "hive.server2.transport.mode": "binary"
+    #remove this one below as not used in source code
+    #"spark.sql.warehouse.dir": "hdfs://{{ template "dmat-oneparser.hdfsURI" . }}{{ .Values.hive.warehouseDir }}/"
+    "spark.seqLimit": "5"
+    "spark.hiveLimit": "1"
+    "spark.esLimit": "1"
+    "spark.seqSleepTime": "15000"
+    "spark.hiveSleepTime": "15000"
+    "spark.esSleepTime": "15000"
+    "spark.timeInterval": "24"
+    "spark.seqTimeInterval": "48"
+    "spark.hiveTimeInterval": "48"
+    "spark.esTimeInterval": "48"
+    "spark.repartition": {{ .Values.sparkJob3.repartition | quote }}
+    "spark.writeToHdfsRepartition": "100"
+    "spark.PROCESSDMAT_HDFS_WRITE": "FALSE"
+    "spark.shuffle.service.enabled": "false"
+    "spark.dynamicAllocation.enabled": "false"
+    "spark.email_host_name": ""
+    "spark.email_port": "9999"
+    "spark.email_user_name": ""
+    "spark.email_pwd": ""
+    "spark.email_smtp_port": "25"
+    "spark.email_from": ""
+    "spark.email_sender_name": ""
+    "spark.sql.shuffle.partitions": {{ .Values.sparkJob3.shufflePartitions | quote }}
+    "spark.KPI_RTP_PACKET_BROADCAST": "true"
+    "spark.KPI_RTP_PACKET": "true"
+    "spark.KPI_RTP_PACKET_CACHE": "false"
+    "spark.kryo.classesToRegister": "org.apache.spark.sql.execution.joins.UnsafeHashedRelation,org.apache.spark.sql.execution.datasources.WriteTaskResult,org.apache.spark.internal.io.FileCommitProtocol$TaskCommitMessage,org.apache.spark.sql.execution.datasources.ExecutedWriteSummary,org.apache.spark.sql.execution.datasources.BasicWriteTaskStats,org.apache.spark.sql.execution.joins.LongHashedRelation,org.apache.spark.sql.execution.joins.LongToUnsafeRowMap,[Lorg.apache.spark.sql.catalyst.InternalRow;,scala.reflect.ClassTag$$anon$1,org.apache.spark.sql.execution.datasources.InMemoryFileIndex$SerializableFileStatus,[Lorg.apache.spark.sql.execution.datasources.InMemoryFileIndex$SerializableBlockLocation;,org.apache.spark.sql.execution.datasources.InMemoryFileIndex$SerializableBlockLocation,org.apache.spark.sql.execution.command.PartitionStatistics,org.datasyslab.geospark.spatialRddTool.StatCalculator,[Lorg.apache.spark.sql.Row;,org.apache.spark.sql.catalyst.expressions.GenericRow,org.apache.spark.sql.execution.columnar.CachedBatch,\
+    [[B,org.apache.spark.sql.catalyst.expressions.GenericInternalRow,org.apache.spark.unsafe.types.UTF8String,scala.reflect.ClassTag$GenericClassTag"
+    "spark.serializer": "org.apache.spark.serializer.KryoSerializer"
+    "spark.kryo.registrationRequired": "true"
+    "spark.KAFKA_MIN_PARTITIONS": {{ .Values.sparkJob3.kafkaMinPartitions | quote }}
+    "spark.WRITE_DMAT_RECORDS_TO_ES": {{ .Values.sparkJob3.writeDmatRecordsToES | quote }}
+    "spark.GEO_SHAPE_FILE_PATH":  {{ .Values.sparkJob3.geoShapeFilePath | quote }}
+    # test configuration for local storage
+    #"spark.local.dir": "/app/spark-local-dir"
+    "spark.kubernetes.local.dirs.tmpfs": "false"
+    "spark.eventLog.enabled": "true"
+    "spark.eventLog.dir": "hdfs://{{ template "dmat-oneparser.hdfsURI" . }}/spark2-k8s-history"
+    "spark.eventLog.rolling.enabled": "true"
+    "spark.eventLog.rolling.maxFileSize": "128m"
+    "spark.history.fs.logDirectory": "hdfs://{{ template "dmat-oneparser.hdfsURI" . }}/spark2-k8s-history"
+    "spark.history.fs.cleaner.enabled": "true"
+    "spark.history.fs.cleaner.maxAge": "6d"
+    "spark.history.fs.cleaner.interval": "24h"
+    "spark.files.ignoreCorruptFiles": "true"
+    "spark.files.ignoreMissingFiles": "true"
+    "spark.ES_NESTEDFIELD_CUTOFFDATE": "2021-07-25"
+    "spark.HDFS_HA_ENABLED": "{{ .Values.hdfs.isHA }}"
+    "spark.PATH_TO_CORE_SITE": "file:///etc/hadoop/conf/core-site.xml"
+    "spark.PATH_TO_HDFS_SITE": "file:///etc/hadoop/conf/hdfs-site.xml"
+    "spark.sql.optimizer.dynamicPartitionPruning.enabled": "false"
+    "spark.sql.adaptive.enabled": "true"
+    "spark.dynamicAllocation.shuffleTracking.enabled": "true"
+    "spark.hadoop.fs.s3a.endpoint": "{{ .Values.s3a.endpoint }}"
+    "spark.hadoop.fs.s3a.aws.credentials.provider": "com.amazonaws.auth.InstanceProfileCredentialsProvider"
+    "spark.hadoop.fs.s3.enableServerSideEncryption": "true"
+    "spark.hadoop.fs.s3a.server-side-encryption-algorithm": "AES256"
+    "spark.hadoop.fs.s3.serverSideEncryption.kms.keyId": "711aa59c-764d-402d-9470-f19aa2d349ee"
+    "spark.ui.prometheus.enabled": "true"
+    "*.sink.prometheusServlet.class": "org.apache.spark.metrics.sink.PrometheusServlet"
+    "*.sink.prometheusServlet.path": "/metrics/prometheus"
+    "master.sink.prometheusServlet.path": "/metrics/master/prometheus"
+    "applications.sink.prometheusServlet.path": "/metrics/applications/prometheus"
+  driver:
+    volumeMounts:
+      - name: logs
+        mountPath: /logs
+      - name: log-conf
+        mountPath: /etc/spark/conf
+    javaOptions: "-XX:+UseG1GC -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -Xloggc:/logs/driver.gc -Dlog4j.configuration=file:///etc/spark/conf/log4j-driver-sparkJob3.properties -Dcom.amazonaws.services.s3.enableV4=true"
+    cores:  {{ .Values.sparkJob3.driver.cores }}
+    coreLimit: {{ .Values.sparkJob3.driver.coreLimit }}
+    memory: {{ .Values.sparkJob3.driver.memory }}
+    memoryOverhead: {{ .Values.sparkJob3.driver.memoryOverhead | quote }}
+    labels:
+      version:   {{ .Values.sparkVersion | quote }}
+    serviceAccount:  {{ .Values.serviceAccount.name | quote }}
+  executor:
+    volumeMounts:
+      - name: logs
+        mountPath: /logs
+      - name: log-conf
+        mountPath: /etc/spark/conf
+      # test configuration for local storage
+      #- name: spark-local-dir-2
+      #  mountPath: "/tmp/spark-local-dir"
+    javaOptions: '-XX:+UseG1GC -XX:InitiatingHeapOccupancyPercent=35 -Dlog4j.configuration=file:///etc/spark/conf/log4j-executor-sparkJob3.properties -verbose:gc -XX:+PrintGCDetails -XX:G1HeapRegionSize=16 -XX:+PrintGCDateStamps -Xloggc:/logs/{{ "{{" }}APP_ID{{ "}}" }}-{{ "{{" }}EXECUTOR_ID{{ "}}" }}.gc -Dcom.amazonaws.services.s3.enableV4=true'
+    cores: {{ .Values.sparkJob3.executor.cores }}
+{{- if not .Values.dynamicAllocation.enabled }}
+    instances: {{ .Values.sparkJob3.executor.instances }}
+{{- end }}
+    memory: {{ .Values.sparkJob3.executor.memory }}
+    memoryOverhead: {{ .Values.sparkJob3.executor.memoryOverhead | quote}}
+    affinity:
+      podAffinity:
+#        requiredDuringSchedulingIgnoredDuringExecution:
+#          - labelSelector:
+#              matchExpressions:
+#                - key: app
+#                  operator: In
+#                  values:
+#                    - {{ template "dmat-oneparser.name" . }}-spark-proc-dmat-records
+#            topologyKey: "kubernetes.io/hostname"
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - {{ template "dmat-oneparser.name" . }}-spark-proc-dmat-records
+              topologyKey: "kubernetes.io/hostname"
+#      podAntiAffinity:
+#        preferredDuringSchedulingIgnoredDuringExecution:
+#          - weight: 100
+#            podAffinityTerm:
+#              labelSelector:
+#                matchExpressions:
+#                  - key: app
+#                    operator: In
+#                    values:
+#                      - {{ template "dmat-oneparser.name" . }}-spark-read-seq-to-hive
+##                      - {{ template "dmat-oneparser.name" . }}-spark-write-seq-to-hdfs
+#                      - {{ template "dmat-oneparser.name" . }}-hdfs-copier
+#              topologyKey: "kubernetes.io/hostname"
+    labels:
+      version: {{ .Values.sparkVersion | quote }}
+  volumes:
+    # test configuration for local storage
+    #- name: spark-local-dir-2
+    #  hostPath:
+    #   path: "/tmp/spark-local-dir"
+    - name: logs
+      hostPath:
+        path: /var/log/spark/proc-dmat-records
+    - name: log-conf
+      configMap:
+        name: {{ template "dmat-oneparser.fullname" . }}-spark-logging
+{{- end }}
