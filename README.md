@@ -6,6 +6,7 @@ kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-pass
 
 --------------------------------------------------------------------------------------------------------------------------------------------
 kubectl create namespace monitoring
+
 node selector = (service=true)
 
 1. install influxdb(time series DB, jitne bhi metrices prometheus report kr rha hi usse vo store krta hi, like ek week and ek month ka data dekhne k liye)
